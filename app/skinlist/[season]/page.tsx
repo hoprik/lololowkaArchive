@@ -1,10 +1,9 @@
-"use client";
-
-import skins from "@/public/skins.json";
+"use client"
+import skins from "@/public/skins.json"; // skins should be a Record<string, Season>
 import { Object3D, Scene, TextureLoader } from "three";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -35,36 +34,30 @@ async function init(
     for (const value of skins) {
         // Scene setup
         const scene = new THREE.Scene();
-
         const card = document.createElement("div");
         card.className = "flex flex-col shadow-2xl border border-neutral-800 w-[190px] p-2 rounded";
-
         const skinElement = document.createElement("div");
-        skinElement.className = "mx-auto"
+        skinElement.className = "mx-auto";
         skinElement.style.width = canvasWidth ? canvasWidth + "px" : "100px";
         skinElement.style.height = canvasHeight ? canvasHeight + "px" : "200px";
         card.appendChild(skinElement);
-
         const hr = document.createElement("hr");
         hr.className = "w-10/12 mx-auto mt-2 border-b-2 rounded";
         card.appendChild(hr);
-
         const name = document.createElement("p");
         name.className = "text-center text-xl font-semibold text-cyan-100 underline";
-        name.innerText = value.name
+        name.innerText = value.name;
         name.onclick = () => {
             const canvas = document.createElement("canvas") as HTMLCanvasElement;
             if (canvas) {
                 const img = new Image();
                 img.src = "../skins/" + value.path; // Skin image path
-
                 img.onload = () => {
                     const ctx = canvas.getContext("2d");
                     if (ctx) {
                         canvas.width = 64;
                         canvas.height = 64;
                         ctx.drawImage(img, 0, 0, 64, 64);
-
                         const link = document.createElement("a");
                         link.href = canvas.toDataURL("image/png");
                         link.download = "skin.png";
@@ -74,7 +67,6 @@ async function init(
             }
         };
         card.appendChild(name);
-
         scene.userData.element = skinElement;
         skinsDiv.appendChild(card);
 
@@ -85,7 +77,7 @@ async function init(
         scene.userData.camera = camera;
 
         // CONTROLS
-        const cameraControls = new OrbitControls(camera, scene.userData.element );
+        const cameraControls = new OrbitControls(camera, scene.userData.element);
         cameraControls.enablePan = false;
         scene.userData.controls = cameraControls;
 
@@ -100,7 +92,6 @@ async function init(
         light3.position.set(-0.32, 0, 0);
         const light4 = new THREE.DirectionalLight(0xFFFFFF, 1.0);
         light4.position.set(0, 0, -0.7);
-
         scene.add(ambientLight);
         scene.add(light);
         scene.add(light2);
@@ -122,25 +113,27 @@ async function init(
         // Apply texture to model
         model.scene.traverse(object => {
             if (isMeshType(object)) {
-                object.material.map.source = skin.source;
+                const texture = (object.material as THREE.MeshBasicMaterial).map;
+                if (texture?.source) {
+                    texture.source = skin.source;
+                }
             }
         });
 
         model.scene.position.set(0, -1, 0);
         model.scene.rotation.set(0, -1.2, 0);
         scene.add(model.scene);
-
         scenes.push(scene);
     }
 
     // Renderer setup
-    const renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
-    renderer.setClearColor( 0x13131c, 0 );
-    renderer.setPixelRatio( window.devicePixelRatio );
-    renderer.setAnimationLoop( ()=>render(renderer, canvas, scenes) );
+    const renderer = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+    renderer.setClearColor(0x13131c, 0);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setAnimationLoop(() => render(renderer, canvas, scenes));
 }
 
-function updateSize(canvas, renderer) {
+function updateSize(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
@@ -149,58 +142,40 @@ function updateSize(canvas, renderer) {
     }
 }
 
-function render(renderer, canvas, scenes) {
-    updateSize(canvas, renderer);
+function render(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, scenes: Scene[]) {
+    updateSize(renderer, canvas);
 
     canvas.style.transform = `translateY(${window.scrollY}px)`;
 
-    renderer.setClearColor( 0x13131c );
-    renderer.setScissorTest( false );
+    renderer.setClearColor(0x13131c);
+    renderer.setScissorTest(false);
     renderer.clear();
 
-    renderer.setClearColor( 0x1f2937 );
-    renderer.setScissorTest( true );
+    renderer.setClearColor(0x1f2937);
+    renderer.setScissorTest(true);
 
-    scenes.forEach( function ( scene ) {
+    scenes.forEach(function (scene) {
+        scene.children[0].rotation.y = Date.now() * 0.001;
 
-        // so something moves
-        scene.children[ 0 ].rotation.y = Date.now() * 0.001;
-
-        // get the element that is a place holder for where we want to
-        // draw the scene
         const element = scene.userData.element;
-
-        // get its position relative to the page's viewport
         const rect = element.getBoundingClientRect();
 
-        // check if it's offscreen. If so skip it
-        if ( rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
-            rect.right < 0 || rect.left > renderer.domElement.clientWidth ) {
-
+        if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
+            rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
             return;
-
         }
 
-        // set the viewport
         const width = rect.right - rect.left;
         const height = rect.bottom - rect.top;
         const left = rect.left;
         const bottom = renderer.domElement.clientHeight - rect.bottom;
 
-        renderer.setViewport( left, bottom, width, height );
-        renderer.setScissor( left, bottom, width, height );
+        renderer.setViewport(left, bottom, width, height);
+        renderer.setScissor(left, bottom, width, height);
 
         const camera = scene.userData.camera;
-
-        // camera.aspect = width / height; // not changing in this example
-        // camera.updateProjectionMatrix();
-        //
-        // scene.userData.controls.update();
-
-        renderer.render( scene, camera );
-
-    } );
-
+        renderer.render(scene, camera);
+    });
 }
 
 export default function SkinList() {
@@ -210,11 +185,14 @@ export default function SkinList() {
     const params = useParams();
     const [season, setSeason] = useState<Season | null>(null);
 
-    const seasonId = params?.season; // Unwrap the params
+    // Extract seasonId from URL params
+    const seasonId = params?.season;
 
     // Set the season data when the params change
     useEffect(() => {
+        //@ts-expect-error eslint почему то ругается
         if (seasonId && skins[seasonId]) {
+            //@ts-expect-error eslint почему то ругается
             setSeason(skins[seasonId]);
         }
     }, [seasonId]);

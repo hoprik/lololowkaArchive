@@ -1,7 +1,24 @@
 "use client"
 import { useState, useEffect } from "react";
 
-const initialJson = {
+// Тип для данных с сезонами
+interface Skin {
+    name: string;
+    path: string;
+}
+
+interface Season {
+    name: string;
+    type: string;
+    skins: Skin[];
+}
+
+// Тип для всего jsonData с индексом
+interface JsonData {
+    [key: string]: Season;  // Позволяет динамически добавлять сезоны с любым ключом
+}
+
+const initialJson: JsonData = {
     neggen: {
         name: "Новое поколение",
         type: "season",
@@ -15,7 +32,7 @@ const initialJson = {
 };
 
 const EditorPage = () => {
-    const [jsonData, setJsonData] = useState(initialJson);
+    const [jsonData, setJsonData] = useState<JsonData>(initialJson);
     const [newSeasonName, setNewSeasonName] = useState("");
     const [isFileLoading, setIsFileLoading] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -23,7 +40,7 @@ const EditorPage = () => {
     // Добавление нового сезона
     const addNewSeason = () => {
         const newSeasonId = `season_${Date.now()}`;
-        const newSeason = {
+        const newSeason: Season = {
             name: newSeasonName,
             type: "season",
             skins: [],
