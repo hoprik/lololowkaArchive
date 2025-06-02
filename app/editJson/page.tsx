@@ -1,10 +1,10 @@
 "use client"
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-// Тип для данных с сезонами
 interface Skin {
     name: string;
     path: string;
+    slim?: boolean;
 }
 
 interface Season {
@@ -13,63 +13,79 @@ interface Season {
     skins: Skin[];
 }
 
-// Тип для всего jsonData с индексом
 interface JsonData {
-    [key: string]: Season;  // Позволяет динамически добавлять сезоны с любым ключом
+    [key: string]: Season;
 }
 
 const initialJson: JsonData = {
-    neggen: {
-        name: "Новое поколение",
-        type: "season",
-        skins: [
-            {
-                name: "Варнер",
-                path: "Варнер.png",
-            },
-        ],
-    },
 };
 
 const EditorPage = () => {
     const [jsonData, setJsonData] = useState<JsonData>(initialJson);
     const [newSeasonName, setNewSeasonName] = useState("");
     const [isFileLoading, setIsFileLoading] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // Загрузка JSON из файла
+    const handleJsonUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const text = e.target?.result as string;
+                    const parsed: JsonData = JSON.parse(text);
+                    // Нормализуем: если у скинов нет поля slim, добавляем false
+                    const normalized: JsonData = {};
+                    Object.keys(parsed).forEach((seasonId) => {
+                        const season = parsed[seasonId];
+                        const skinsWithSlim = season.skins.map((skin) => ({
+                            name: skin.name,
+                            path: skin.path,
+                            slim: (skin.slim ?? false),
+                        }));
+                        normalized[seasonId] = {
+                            ...season,
+                            skins: skinsWithSlim,
+                        };
+                    });
+                    setJsonData(normalized);
+                } catch (err) {
+                    console.error("Ошибка при чтении JSON:", err);
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
 
     // Добавление нового сезона
     const addNewSeason = () => {
+        if (!newSeasonName.trim()) return;
         const newSeasonId = `season_${Date.now()}`;
         const newSeason: Season = {
-            name: newSeasonName,
+            name: newSeasonName.trim(),
             type: "season",
             skins: [],
         };
-
         setJsonData((prevData) => ({
             ...prevData,
             [newSeasonId]: newSeason,
         }));
-
         setNewSeasonName("");
     };
 
     // Добавление скинов из файлов
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, seasonId: string) => {
         const files = event.target.files;
-
         if (files) {
             setIsFileLoading(true);
-
-            const newSkins = Array.from(files).map((file) => {
-                const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, ""); // Убираем расширение
+            const newSkins: Skin[] = Array.from(files).map((file) => {
+                const fileNameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
                 return {
-                    name: fileNameWithoutExtension, // Имя скина - имя файла без расширения
-                    path: file.name, // Путь к файлу (можно изменить на путь в хранилище)
+                    name: fileNameWithoutExtension,
+                    path: file.name,
+                    slim: false,
                 };
             });
-
-            // Добавление скинов в существующий сезон
             setJsonData((prevData) => {
                 const season = prevData[seasonId];
                 return {
@@ -80,7 +96,6 @@ const EditorPage = () => {
                     },
                 };
             });
-
             setIsFileLoading(false);
         }
     };
@@ -94,11 +109,6 @@ const EditorPage = () => {
         link.href = URL.createObjectURL(blob);
         link.download = "seasons.json";
         link.click();
-    };
-
-    // Переключение темной/светлой темы
-    const toggleDarkMode = () => {
-        setIsDarkMode((prev) => !prev);
     };
 
     // Редактирование названия сезона
@@ -124,7 +134,6 @@ const EditorPage = () => {
                 ...updatedSkins[skinIndex],
                 name: newName,
             };
-
             return {
                 ...prevData,
                 [seasonId]: {
@@ -135,27 +144,40 @@ const EditorPage = () => {
         });
     };
 
-    useEffect(() => {
-        if (isDarkMode) {
-            document.documentElement.classList.add("dark");
-        } else {
-            document.documentElement.classList.remove("dark");
-        }
-    }, [isDarkMode]);
+    // Переключение флага slim у скина
+    const handleSkinSlimChange = (seasonId: string, skinIndex: number) => {
+        setJsonData((prevData) => {
+            const season = prevData[seasonId];
+            const updatedSkins = [...season.skins];
+            const currentSlim = updatedSkins[skinIndex].slim ?? false;
+            updatedSkins[skinIndex] = {
+                ...updatedSkins[skinIndex],
+                slim: !currentSlim,
+            };
+            return {
+                ...prevData,
+                [seasonId]: {
+                    ...season,
+                    skins: updatedSkins,
+                },
+            };
+        });
+    };
 
     return (
-        <div className={`min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 p-8 transition-all`}>
-            <div className="bg-white dark:bg-gray-800 text-black dark:text-white p-6 rounded shadow-lg w-full max-w-3xl">
+        <div className="min-h-screen flex items-center justify-center bg-gray-900 p-8 transition-all">
+            <div className="bg-gray-800 text-white p-6 rounded shadow-lg w-full max-w-3xl">
                 <h1 className="text-2xl font-bold mb-6">Редактор сезонов и скинов</h1>
 
-                {/* Переключатель темы */}
+                {/* Загрузка JSON */}
                 <div className="mb-6">
-                    <button
-                        onClick={toggleDarkMode}
-                        className="p-2 bg-blue-500 text-white rounded w-full"
-                    >
-                        {isDarkMode ? "Светлая тема" : "Темная тема"}
-                    </button>
+                    <h2 className="text-xl mb-2">Загрузить JSON</h2>
+                    <input
+                        type="file"
+                        accept="application/json"
+                        onChange={handleJsonUpload}
+                        className="p-2 border border-gray-600 rounded mb-2 w-full bg-gray-700 text-white"
+                    />
                 </div>
 
                 {/* Добавление нового сезона */}
@@ -165,12 +187,12 @@ const EditorPage = () => {
                         type="text"
                         value={newSeasonName}
                         onChange={(e) => setNewSeasonName(e.target.value)}
-                        className="p-2 border border-gray-300 rounded mb-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        className="p-2 border border-gray-600 rounded mb-2 w-full bg-gray-700 text-white"
                         placeholder="Название сезона"
                     />
                     <button
                         onClick={addNewSeason}
-                        className="bg-blue-500 text-white p-2 rounded w-full"
+                        className="bg-blue-600 text-white p-2 rounded w-full"
                     >
                         Добавить сезон
                     </button>
@@ -178,7 +200,7 @@ const EditorPage = () => {
 
                 {/* Список сезонов */}
                 {Object.keys(jsonData).map((seasonId) => {
-                    if (seasonId.startsWith("season_")) {
+                    if (seasonId.startsWith("season_") || seasonId === "neggen") {
                         return (
                             <div key={seasonId} className="mb-6">
                                 <h3 className="text-lg font-semibold mb-2">
@@ -186,7 +208,7 @@ const EditorPage = () => {
                                         type="text"
                                         value={jsonData[seasonId].name}
                                         onChange={(e) => handleSeasonNameChange(seasonId, e.target.value)}
-                                        className="p-2 border border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="p-2 border border-gray-600 rounded w-full bg-gray-700 text-white"
                                     />
                                 </h3>
 
@@ -197,7 +219,7 @@ const EditorPage = () => {
                                         multiple
                                         accept="image/*"
                                         onChange={(e) => handleFileUpload(e, seasonId)}
-                                        className="p-2 border border-gray-300 rounded mb-2 w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                        className="p-2 border border-gray-600 rounded mb-2 w-full bg-gray-700 text-white"
                                     />
                                     {isFileLoading && <p>Загрузка...</p>}
                                 </div>
@@ -205,13 +227,26 @@ const EditorPage = () => {
                                 {/* Список скинов сезона */}
                                 <div>
                                     {jsonData[seasonId].skins.map((skin, skinIndex) => (
-                                        <div key={skinIndex} className="flex justify-between mb-2">
-                                            <input
-                                                type="text"
-                                                value={skin.name}
-                                                onChange={(e) => handleSkinNameChange(seasonId, skinIndex, e.target.value)}
-                                                className="p-2 border border-gray-300 rounded mb-2 w-1/2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            />
+                                        <div key={skinIndex} className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="text"
+                                                    value={skin.name}
+                                                    onChange={(e) =>
+                                                        handleSkinNameChange(seasonId, skinIndex, e.target.value)
+                                                    }
+                                                    className="p-2 border border-gray-600 rounded w-1/2 bg-gray-700 text-white"
+                                                />
+                                                <label className="flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={skin.slim ?? false}
+                                                        onChange={() => handleSkinSlimChange(seasonId, skinIndex)}
+                                                        className="mr-1"
+                                                    />
+                                                    Slim
+                                                </label>
+                                            </div>
                                             <span>{skin.path}</span>
                                         </div>
                                     ))}
@@ -226,7 +261,7 @@ const EditorPage = () => {
                 <div className="mt-6">
                     <button
                         onClick={saveJson}
-                        className="bg-gray-500 text-white p-2 rounded w-full"
+                        className="bg-gray-600 text-white p-2 rounded w-full"
                     >
                         Сохранить JSON
                     </button>

@@ -1,7 +1,7 @@
 import skins from "@/public/skins.json"
 import Link from "next/link";
 export default function Navbar(){
-    return <nav className="fixed w-screen border-gray-200 z-40">
+    return <nav className="fixed w-screen border-gray-200 z-40 bg-gray-500 bg-clip-padding backdrop-filter  backdrop-blur bg-opacity-10 backdrop-saturate-100 backdrop-contrast-100">
         <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
             <Link href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
                 <img src="https://flowbite.com/docs/images/logo.svg" className="h-8" alt="Flowbite Logo" />

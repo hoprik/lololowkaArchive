@@ -1,8 +1,8 @@
 "use client"
 import skins from "@/public/skins.json"; // skins should be a Record<string, Season>
-import {Scene, TextureLoader } from "three";
+import { Scene, TextureLoader } from "three";
 import * as THREE from "three";
-import {GLTF, GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
@@ -18,6 +18,23 @@ type Season = {
     skins: Skin[];
 };
 
+async function loadSkinTextures(skins: { path: string }[]): Promise<Record<string, THREE.Texture>> {
+    const textureLoader = new TextureLoader();
+    const textures: Record<string, THREE.Texture> = {};
+    await Promise.all(
+        skins.map(async (value) => {
+            const skinTexture = await textureLoader.loadAsync("../skins/" + value.path);
+            skinTexture.flipY = false;
+            skinTexture.magFilter = THREE.NearestFilter;
+            skinTexture.minFilter = THREE.NearestFilter;
+            skinTexture.colorSpace = "srgb";
+            skinTexture.format = THREE.RGBAFormat;
+            textures[value.path] = skinTexture;
+        })
+    );
+    return textures;
+}
+
 async function init(
     canvasWidth: number,
     canvasHeight: number,
@@ -26,8 +43,8 @@ async function init(
     season: Season
 ) {
     const skins = season.skins;
+    const textures = await loadSkinTextures(skins);
     const modelLoader = new GLTFLoader();
-    const textureLoader = new TextureLoader();
     const model: GLTF = await modelLoader.loadAsync("/models/model.gltf");
     const scenes: Scene[] = [];
     for (const value of skins) {
@@ -88,17 +105,15 @@ async function init(
         scene.add(light3);
         scene.add(light4);
         const modelSkin = model.scene.clone(true);
-        const skinTexture = await textureLoader.loadAsync("../skins/" + value.path);
-        skinTexture.flipY = false;
-        skinTexture.magFilter = THREE.NearestFilter;
-        skinTexture.minFilter = THREE.NearestFilter;
-        modelSkin.traverse(object => {
+        const skinTexture = textures[value.path];
+        modelSkin.traverse((object) => {
             if ((object as THREE.Mesh).isMesh) {
                 const mesh = object as THREE.Mesh;
                 if (Array.isArray(mesh.material)) {
-                    const materials = mesh.material.map(mat => {
+                    const materials = mesh.material.map((mat) => {
                         const m = (mat as THREE.MeshBasicMaterial).clone();
                         m.map = skinTexture;
+                        m.blendSrc = 200;
                         m.needsUpdate = true;
                         return m;
                     });
@@ -106,6 +121,7 @@ async function init(
                 } else {
                     const m = (mesh.material as THREE.MeshBasicMaterial).clone();
                     m.map = skinTexture;
+                    m.blendSrc = 200;
                     m.needsUpdate = true;
                     mesh.material = m;
                 }
@@ -121,7 +137,6 @@ async function init(
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setAnimationLoop(() => render(renderer, canvas, scenes));
 }
-
 
 function updateSize(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement) {
     const width = canvas.clientWidth;
@@ -150,8 +165,12 @@ function render(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, scenes
         const element = scene.userData.element;
         const rect = element.getBoundingClientRect();
 
-        if (rect.bottom < 0 || rect.top > renderer.domElement.clientHeight ||
-            rect.right < 0 || rect.left > renderer.domElement.clientWidth) {
+        if (
+            rect.bottom < 0 ||
+            rect.top > renderer.domElement.clientHeight ||
+            rect.right < 0 ||
+            rect.left > renderer.domElement.clientWidth
+        ) {
             return;
         }
 
@@ -199,17 +218,17 @@ export default function SkinList() {
         <div className="min-h-screen flex flex-col">
             {season && (
                 <>
-                    <p className="text-center h-fit text-white text-5xl font-semibold mt-20 z-30">
-                        {season.type !== "handmade" && "Скины по"} {season.type === "season" && "сезону"} {season.name}
+                    <p className="text-center h-fit text-white text-5xl font-semibold mt-32 z-30">
+                        {season.type !== "handmade" && "Скины по"} {season.type === "season" && "сезону"}{" "}
+                        {season.name}
                     </p>
 
-                    <canvas className="w-full h-full absolute left-0 top-0" ref={canvasRef}/>
+                    <canvas className="w-full h-full absolute left-0 top-0" ref={canvasRef} />
                     <div className="flex justify-center">
                         <div
                             className="flex max-w-[75%] flex-wrap gap-2 mt-5 max-sm:flex-col justify-start absolute z-10"
                             ref={divRef}
-                        >
-                        </div>
+                        ></div>
                     </div>
                 </>
             )}
