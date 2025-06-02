@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 type Skin = {
     name: string;
     path: string;
+    slim: boolean;
 };
 
 type Season = {
@@ -46,6 +47,7 @@ async function init(
     const textures = await loadSkinTextures(skins);
     const modelLoader = new GLTFLoader();
     const model: GLTF = await modelLoader.loadAsync("/models/model.gltf");
+    const modelSlim = await modelLoader.loadAsync("/models/slimmodel.gltf")
     const scenes: Scene[] = [];
     for (const value of skins) {
         const scene = new THREE.Scene();
@@ -104,7 +106,7 @@ async function init(
         scene.add(light2);
         scene.add(light3);
         scene.add(light4);
-        const modelSkin = model.scene.clone(true);
+        const modelSkin = value.slim ? modelSlim.scene.clone() : model.scene.clone(true);
         const skinTexture = textures[value.path];
         modelSkin.traverse((object) => {
             if ((object as THREE.Mesh).isMesh) {
