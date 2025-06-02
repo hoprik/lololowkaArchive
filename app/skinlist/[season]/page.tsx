@@ -1,6 +1,6 @@
 "use client"
 import skins from "@/public/skins.json"; // skins should be a Record<string, Season>
-import { Object3D, Scene, TextureLoader } from "three";
+import {Scene, TextureLoader } from "three";
 import * as THREE from "three";
 import {GLTF, GLTFLoader} from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -17,10 +17,6 @@ type Season = {
     type: "season" | "handmade" | "other";
     skins: Skin[];
 };
-
-function isMeshType(object?: Object3D): object is THREE.Mesh {
-    return object?.type === "Mesh";
-}
 
 async function init(
     canvasWidth: number,
